@@ -1,4 +1,4 @@
-package com.PlayerService;
+package com.dzieger;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
