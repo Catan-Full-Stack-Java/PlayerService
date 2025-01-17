@@ -1,6 +1,6 @@
 package com.dzieger.controllers;
 
-import com.dzieger.SecurityConfig.JwtUtil;
+import com.dzieger.dtos.ProfileIdDTO;
 import com.dzieger.dtos.PreferencesDTO;
 import com.dzieger.dtos.ProfileDTO;
 import com.dzieger.dtos.WalletDTO;
@@ -25,8 +25,8 @@ public class PlayerProfileController {
     }
 
     @PostMapping("/v1/profile")
-    public ResponseEntity<ApiResponse<String>> createProfile(@RequestHeader("Authorization") String token) {
-        String result = playerProfileService.createProfile(token);
+    public ResponseEntity<ApiResponse<String>> createProfile(@RequestBody ProfileIdDTO playerId) {
+        String result = playerProfileService.createProfile(playerId.getPlayerId());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse<>(true, "Profile created successfully", result));
     }
@@ -40,8 +40,8 @@ public class PlayerProfileController {
 
 
     @DeleteMapping("/v1/profile")
-    public ResponseEntity<ApiResponse<String>> deleteProfile(@RequestHeader("Authorization") String token) {
-        String result = playerProfileService.deleteProfile(token);
+    public ResponseEntity<ApiResponse<String>> deleteProfile(@RequestBody ProfileIdDTO playerId) {
+        String result = playerProfileService.deleteProfile(playerId.getPlayerId());
         return ResponseEntity.ok(new ApiResponse<>(true, "Profile deleted successfully", result));
     }
 

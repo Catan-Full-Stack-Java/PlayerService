@@ -27,13 +27,13 @@ public class PlayerProfile {
     private int gamesWon = 0;
 
     @Column(name = "leaderboard_position")
-    private int leaderboardPosition;
+    private int leaderboardPosition = 0;
 
     @Column(name = "time_played", nullable = false)
     private long timePlayed = 0;
 
     @Column(name = "wallet", nullable = false)
-    private int wallet = 0;
+    private int wallet = 150;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

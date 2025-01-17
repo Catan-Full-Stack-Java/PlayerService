@@ -6,10 +6,16 @@ import com.dzieger.dtos.ProfileDTO;
 import com.dzieger.dtos.WalletDTO;
 import com.dzieger.eventPayloadDtos.GameCompletedEvent;
 import com.dzieger.eventPayloadDtos.LeaderboardUpdatedEvent;
+import com.dzieger.exceptions.ProfileAlreadyExistsException;
+import com.dzieger.models.PlayerProfile;
 import com.dzieger.repositories.PlayerProfileRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class PlayerProfileService {
@@ -22,19 +28,25 @@ public class PlayerProfileService {
         this.jwtUtil = jwtUtil;
     }
 
-    public String createProfile(String token) {
-        // create player profile
-        // Set default preferences
-        setDefaultPreferences();
-        return null;
+    public String createProfile(UUID id){
+        if(playerProfileRepository.findById(id).isPresent()) {
+            throw new ProfileAlreadyExistsException("Profile already exists");
+        }
+        PlayerProfile newProfile = new PlayerProfile();
+        newProfile.setPlayerId(id);
+        newProfile.setPreferences(setDefaultPreferences());
+
+        playerProfileRepository.save(newProfile);
+        return "Profile created successfully";
     }
 
     public ProfileDTO getProfile(String token) {
         // get player profile
+
         return null;
     }
 
-    public String deleteProfile(String token) {
+    public String deleteProfile(UUID playerId) {
         // delete player profile
         return null;
     }
@@ -66,6 +78,7 @@ public class PlayerProfileService {
 
     public WalletDTO getWallet(String token) {
         // get wallet
+        return null;
     }
 
 
@@ -73,7 +86,13 @@ public class PlayerProfileService {
 
     private String setDefaultPreferences() {
         // set default preferences
-        return null;
+        Map<String, Object> preferences = new HashMap<>();
+        preferences.put("notifications", true);
+        preferences.put("sounds", true);
+        preferences.put("music", true);
+        preferences.put("default_game", "regular");
+
+        return convertPreferencesToJson(preferences);
     }
 
     private boolean isValidPreference(String preference) {
@@ -81,13 +100,18 @@ public class PlayerProfileService {
         return false;
     }
 
-    private String updatePreferences(Map<String, Object> preferences) {
+    private String updatePreferences(Map<String, Object> preferences) throws JsonProcessingException {
         // update preferences
         return convertPreferencesToJson(preferences);
     }
 
     private String convertPreferencesToJson(Map<String, Object> preferences) {
-        return null;
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return mapper.writeValueAsString(preferences);
+        } catch (JsonProcessingException) {
+            throw new JsonProcessingException("Unable to convert Map to Json string");
+        }
     }
 
     public PreferencesDTO getProfileGamePreferences(String token) {
