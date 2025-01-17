@@ -1,4 +1,4 @@
-package com.dzieger.securityConfig;
+package com.dzieger.SecurityConfig;
 
 import com.dzieger.models.enums.Role;
 import io.jsonwebtoken.Claims;
@@ -10,11 +10,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
 
+@Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
@@ -41,10 +43,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             Claims claims = jwtUtil.extractAllClaims(token);
 
-            String userId = claims.getId();
-            List<Role> roles = claims.get("authorities", List.class);
+            String userId = claims.getSubject();
+            List<String> roles = claims.get("authorities", List.class);
 
-            Role role = roles.get(0);
+            Role role = Role.valueOf(roles.get(0));
 
             CustomAuthenticationToken authentication = new CustomAuthenticationToken(userId, role);
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));

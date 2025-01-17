@@ -1,17 +1,20 @@
-package com.dzieger.securityConfig;
+package com.dzieger.SecurityConfig;
 
 import com.dzieger.config.Parameters;
 import com.dzieger.models.enums.Role;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Component;
 
 import java.security.Key;
 import java.util.List;
 
+@Component
 public class JwtUtil {
 
     private static final Logger log = LoggerFactory.getLogger(JwtUtil.class);
@@ -53,7 +56,24 @@ public class JwtUtil {
     }
 
     public List<Role> extractRole(String token) {
-        return extractAllClaims(token).get("authorities", List.class);
+        List<String> roles = extractAllClaims(token).get("authorities", List.class);
+        return roles.stream().map(Role::valueOf).toList(); // Convert strings to Role enums
     }
 
+    public boolean validate(String token) {
+        try {
+            Jwts.parserBuilder()
+                    .setSigningKey(KEY)
+                    .setAllowedClockSkewSeconds(1) // Add 1 second of clock skew
+                    .build()
+                    .parseClaimsJws(token);
+            if (!jwtIssuer.equals(extractAllClaims(token).getIssuer())) {
+                throw new JwtException("Invalid JWT issuer");
+            }
+            return jwtIssuer.equals(extractAllClaims(token).getIssuer());
+        } catch (JwtException e) {
+            log.error("Token not validated");
+        }
+        return false;
+    }
 }

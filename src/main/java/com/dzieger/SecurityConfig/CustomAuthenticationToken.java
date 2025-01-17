@@ -1,9 +1,7 @@
-package com.dzieger.securityConfig;
+package com.dzieger.SecurityConfig;
 
 import com.dzieger.models.enums.Role;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
-
-import java.util.List;
 
 public class CustomAuthenticationToken extends AbstractAuthenticationToken {
 
@@ -14,6 +12,7 @@ public class CustomAuthenticationToken extends AbstractAuthenticationToken {
         super(null);
         this.userId = userId;
         this.role = role.toString();
+        setAuthenticated(true);
     }
 
     @Override
@@ -29,5 +28,4 @@ public class CustomAuthenticationToken extends AbstractAuthenticationToken {
     public String getRole() {
         return role;
     }
-
 }
