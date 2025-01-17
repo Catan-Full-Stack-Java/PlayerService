@@ -8,7 +8,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(classes = PlayerServiceApplication.class)
 @ActiveProfiles("test")
-class PlayerServiceApplicationTests {
+class PlayerProfileServiceApplicationTests {
 
 	@Autowired
 	private Environment env;
