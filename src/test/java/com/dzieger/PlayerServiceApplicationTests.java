@@ -6,7 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.env.Environment;
 import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest
+@SpringBootTest(classes = PlayerServiceApplication.class)
 @ActiveProfiles("test")
 class PlayerServiceApplicationTests {
 
