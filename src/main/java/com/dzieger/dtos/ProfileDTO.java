@@ -4,7 +4,6 @@ import java.util.Map;
 
 public class ProfileDTO {
 
-    private String username;
     private int gamesPlayed;
     private int gamesWon;
     private int leaderboardPosition;
@@ -15,22 +14,13 @@ public class ProfileDTO {
     public ProfileDTO() {
     }
 
-    public ProfileDTO(String username, int gamesPlayed, int gamesWon, int leaderboardPosition, long timePlayed, int wallet, Map<String, Object> preferences) {
-        this.username = username;
+    public ProfileDTO(int gamesPlayed, int gamesWon, int leaderboardPosition, long timePlayed, int wallet, Map<String, Object> preferences) {
         this.gamesPlayed = gamesPlayed;
         this.gamesWon = gamesWon;
         this.leaderboardPosition = leaderboardPosition;
         this.timePlayed = timePlayed;
         this.wallet = wallet;
         this.preferences = preferences;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
     }
 
     public int getGamesPlayed() {

@@ -7,7 +7,7 @@ import com.dzieger.dtos.ProfileDTO;
 import com.dzieger.dtos.WalletDTO;
 import com.dzieger.eventPayloadDtos.GameCompletedEvent;
 import com.dzieger.eventPayloadDtos.LeaderboardUpdatedEvent;
-import com.dzieger.exceptions.NegativeBalanceResultException;
+import com.dzieger.exceptions.NegativeBalanceException;
 import com.dzieger.exceptions.ProfileAlreadyExistsException;
 import com.dzieger.exceptions.ProfileNotFoundException;
 import com.dzieger.models.PlayerProfile;
@@ -22,6 +22,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.security.Key;
@@ -38,6 +39,9 @@ class PlayerProfileServiceTest {
 
     @Mock
     private PlayerProfileRepository playerProfileRepository;
+
+    @Mock
+    private KafkaTemplate<String, String> kafkaTemplate;
 
     @Mock
     private Parameters params;
@@ -262,7 +266,7 @@ class PlayerProfileServiceTest {
 
         when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(profile));
 
-        assertThrows(NegativeBalanceResultException.class, () -> {
+        assertThrows(NegativeBalanceException.class, () -> {
             playerProfileService.updateWallet(token, walletDTO);
         });
     }
