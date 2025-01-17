@@ -1,5 +1,6 @@
 package com.dzieger.services;
 
+import com.dzieger.SecurityConfig.JwtUtil;
 import com.dzieger.dtos.PreferencesDTO;
 import com.dzieger.dtos.ProfileDTO;
 import com.dzieger.dtos.WalletDTO;
@@ -14,9 +15,11 @@ import java.util.Map;
 public class PlayerProfileService {
 
     private final PlayerProfileRepository playerProfileRepository;
+    private final JwtUtil jwtUtil;
 
-    public PlayerProfileService(PlayerProfileRepository playerProfileRepository) {
+    public PlayerProfileService(PlayerProfileRepository playerProfileRepository, JwtUtil jwtUtil) {
         this.playerProfileRepository = playerProfileRepository;
+        this.jwtUtil = jwtUtil;
     }
 
     public String createProfile(String token) {

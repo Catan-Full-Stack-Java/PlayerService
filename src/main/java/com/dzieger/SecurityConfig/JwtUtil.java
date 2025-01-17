@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
+import java.util.Date;
 import java.util.List;
 
 @Component
@@ -76,4 +77,18 @@ public class JwtUtil {
         }
         return false;
     }
+
+    // Helper method to generate a token
+    public String generateToken(String userId, String username, List<Role> roles) {
+        return Jwts.builder()
+                .setSubject(userId)
+                .claim("username", username)
+                .claim("authorities", roles.stream().map(Role::name).toList())
+                .setIssuer(jwtIssuer)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + jwtExpiration))
+                .signWith(KEY)
+                .compact();
+    }
+
 }
