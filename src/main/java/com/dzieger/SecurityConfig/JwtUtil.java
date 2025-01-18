@@ -40,28 +40,38 @@ public class JwtUtil {
         KEY = Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
-    Claims extractAllClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(KEY)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
+    public Claims extractAllClaims(String token) {
+        log.info("Extracting all claims from token");
+        try{
+            return Jwts.parserBuilder()
+                    .setSigningKey(KEY)
+                    .build()
+                    .parseClaimsJws(token)
+                    .getBody();
+        } catch (JwtException e) {
+            log.error("Error while extracting claims from token", e);
+            throw new JwtException("Error while extracting claims from token");
+        }
     }
 
     public String extractUserId(String token) {
+        log.info("Extracting user ID from token");
         return extractAllClaims(token).getSubject();
     }
 
     public String extractUsername(String token) {
+        log.info("Extracting username from token");
         return extractAllClaims(token).get("username", String.class);
     }
 
     public List<Role> extractRole(String token) {
+        log.info("Extracting role from token");
         List<String> roles = extractAllClaims(token).get("authorities", List.class);
         return roles.stream().map(Role::valueOf).toList(); // Convert strings to Role enums
     }
 
     public boolean validate(String token) {
+        log.info("Validating token");
         try {
             Jwts.parserBuilder()
                     .setSigningKey(KEY)

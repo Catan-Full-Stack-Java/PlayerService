@@ -1,10 +1,16 @@
 package com.dzieger.dtos;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 import java.util.UUID;
 
 public class GameStatsUpdateDTO {
 
+    @NotNull(message = "Player ID cannot be null")
     private UUID playerId;
+
+    @NotNull(message = "Win status cannot be null")
     private boolean win;
 
     public GameStatsUpdateDTO() {

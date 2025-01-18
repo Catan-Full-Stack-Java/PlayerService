@@ -47,19 +47,25 @@ public class PlayerProfileService {
         PlayerProfile newProfile = new PlayerProfile();
         newProfile.setPlayerId(id);
         newProfile.setPreferences(setDefaultPreferences());
+        newProfile.setGamesPlayed(0);
+        newProfile.setGamesWon(0);
+        newProfile.setLeaderboardPosition(0);
+        newProfile.setTimePlayed(0);
+        newProfile.setWallet(150);
 
         playerProfileRepository.save(newProfile);
         log.info("Profile created successfully for player with id: {}", id);
         return "Profile created successfully";
     }
 
+    // TODO: Create profile with default preferences if profile does not exist when accessing getProfile endpoint
     public ProfileDTO getProfile(String token) {
         log.info("Getting profile for player");
-
         // get player profile
-        UUID playerId = UUID.fromString(jwtUtil.extractUserId(token));
+        UUID playerId = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
         PlayerProfile playerProfile = playerProfileRepository.findById(playerId).orElseThrow(() ->
                 new ProfileNotFoundException("Profile not found"));
+
         ProfileDTO profileDTO = new ProfileDTO();
         profileDTO.setPreferences(convertJsonToMappedPreferences(playerProfile.getPreferences()));
         profileDTO.setGamesPlayed(playerProfile.getGamesPlayed());
@@ -67,6 +73,9 @@ public class PlayerProfileService {
         profileDTO.setLeaderboardPosition(playerProfile.getLeaderboardPosition());
         profileDTO.setTimePlayed(playerProfile.getTimePlayed());
         profileDTO.setWallet(playerProfile.getWallet());
+
+        log.info("Profile: {}", profileDTO);
+
         return profileDTO;
     }
 
@@ -85,18 +94,25 @@ public class PlayerProfileService {
         log.info("Getting preferences for player");
 
         // get player preferences
-        UUID playerId = UUID.fromString(jwtUtil.extractUserId(token));
+        UUID playerId = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
 
         PlayerProfile playerProfile = playerProfileRepository.findById(playerId).orElseThrow(() ->
                 new ProfileNotFoundException("Profile not found"));
+
+
         return new PreferencesDTO(convertJsonToMappedPreferences(playerProfile.getPreferences()));
     }
 
     public PreferencesDTO updateProfilePreferences(String token, Map<String, Object> preferences) {
-        log.info("Updating preferences for player");
+
+        if (preferences == null || preferences.isEmpty()) {
+            throw new InvalidPreferenceException("Preferences cannot be null");
+        }
+
+        log.info("Updating preferences for player: {}", preferences);
 
         // update player preferences
-        UUID playerId = UUID.fromString(jwtUtil.extractUserId(token));
+        UUID playerId = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
         PlayerProfile playerProfile = playerProfileRepository.findById(playerId).orElseThrow(() ->
                 new ProfileNotFoundException("Profile not found"));
         playerProfile.setPreferences(updatePreferences(playerProfile, preferences));
@@ -115,13 +131,13 @@ public class PlayerProfileService {
         if (event.isWon()) {
             profile.setGamesWon(profile.getGamesWon() + 1);
         }
-        PlayerProfile updatedProfile = playerProfileRepository.save(profile);
+        playerProfileRepository.save(profile);
 
         // produce stats for leaderboard service
-        double stats = (double) updatedProfile.getGamesWon() / updatedProfile.getGamesPlayed();
+        double stats = (double) profile.getGamesWon() / profile.getGamesPlayed();
 
         // produce stats for leaderboard service
-        String eventPayload = String.format("{\"playerId\": \"%s\", \"stats\": %f}", updatedProfile.getPlayerId(), stats);
+        String eventPayload = String.format("{\"playerId\": \"%s\", \"stats\": %f}", profile.getPlayerId(), stats);
 
         try {
             kafkaTemplate.send("leaderboard-stats", eventPayload);
@@ -143,12 +159,15 @@ public class PlayerProfileService {
 
     public WalletDTO updateWallet(String token, WalletDTO wallet) {
         // update wallet
-        PlayerProfile profile = playerProfileRepository.findById(UUID.fromString(jwtUtil.extractUserId(token))).orElseThrow(() ->
+        PlayerProfile profile = playerProfileRepository.findById(UUID.fromString(jwtUtil.extractUserId(token.substring(7))))
+                .orElseThrow(() ->
                 new ProfileNotFoundException("Profile not found"));
 
         if (profile.getWallet() + wallet.getChangeAmount() < 0) {
-            throw new NegativeBalanceException("Insufficient funds");
+            throw new InsufficientFundsException("Insufficient funds");
         }
+
+        profile.setWallet(profile.getWallet() + wallet.getChangeAmount());
 
         playerProfileRepository.save(profile);
 
@@ -161,7 +180,7 @@ public class PlayerProfileService {
 
     public WalletDTO getWallet(String token) {
         // get wallet
-        PlayerProfile profile = playerProfileRepository.findById(UUID.fromString(jwtUtil.extractUserId(token))).orElseThrow(() ->
+        PlayerProfile profile = playerProfileRepository.findById(UUID.fromString(jwtUtil.extractUserId(token.substring(7)))).orElseThrow(() ->
                 new ProfileNotFoundException("Profile not found"));
         WalletDTO wallet = new WalletDTO();
         wallet.setBalance(profile.getWallet());
@@ -189,8 +208,15 @@ public class PlayerProfileService {
 
     private String updatePreferences(PlayerProfile profile, Map<String, Object> preferences) {
         // update preferences
-        Map<String, Object> profilePreferences = convertJsonToMappedPreferences(profile.getPreferences());
+        String preferencesJson = profile.getPreferences();
+        if (preferencesJson == null || preferencesJson.isEmpty()) {
+            log.warn("Profile has no existing preferences. Initializing empty preferences.");
+            preferencesJson = "{}";
+        }
+        Map<String, Object> profilePreferences = convertJsonToMappedPreferences(preferencesJson);
+        log.info("Updating preferences: {}", preferences);
         preferences.forEach((key, value) -> {
+            log.info("Updating preference: {} with value: {}", key, value);
             if (isValidPreference(key)) {
                 profilePreferences.put(key, value);
             } else {
@@ -202,6 +228,7 @@ public class PlayerProfileService {
     }
 
     private String convertMappedPreferencesToJson(Map<String, Object> preferences) {
+        log.info("Converting preferences to Json string");
         try {
             ObjectMapper mapper = new ObjectMapper();
             return mapper.writeValueAsString(preferences);
@@ -212,6 +239,7 @@ public class PlayerProfileService {
 
     private Map<String, Object> convertJsonToMappedPreferences(String preferences) {
         try {
+            log.info("Converting Json string to Map: {}", preferences);
             ObjectMapper mapper = new ObjectMapper();
             return mapper.readValue(preferences, Map.class);
         } catch (JsonProcessingException e) {
@@ -221,7 +249,7 @@ public class PlayerProfileService {
 
     public PreferencesDTO getProfileGamePreferences(String token) {
         // get player game preferences
-        UUID playerId = UUID.fromString(jwtUtil.extractUserId(token));
+        UUID playerId = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
         PlayerProfile profile = playerProfileRepository.findById(playerId).orElseThrow(() ->
                 new ProfileNotFoundException("Profile not found"));
 

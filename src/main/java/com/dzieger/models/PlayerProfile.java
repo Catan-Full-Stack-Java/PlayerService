@@ -15,6 +15,7 @@ import java.util.UUID;
 public class PlayerProfile {
 
     @Id
+    @Column(name = "player_id", nullable = false, unique = true)
     private UUID playerId;
 
     // Player's preferences in JSON format

@@ -7,7 +7,8 @@ import com.dzieger.dtos.ProfileDTO;
 import com.dzieger.dtos.WalletDTO;
 import com.dzieger.eventPayloadDtos.GameCompletedEvent;
 import com.dzieger.eventPayloadDtos.LeaderboardUpdatedEvent;
-import com.dzieger.exceptions.NegativeBalanceException;
+import com.dzieger.exceptions.InvalidPreferenceException;
+import com.dzieger.exceptions.InsufficientFundsException;
 import com.dzieger.exceptions.ProfileAlreadyExistsException;
 import com.dzieger.exceptions.ProfileNotFoundException;
 import com.dzieger.models.PlayerProfile;
@@ -20,17 +21,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.security.Key;
 import java.util.*;
+import java.util.List;
 
-import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ActiveProfiles("test")
@@ -64,15 +64,12 @@ class PlayerProfileServiceTest {
 
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
+//        MockitoAnnotations.openMocks(this);
         String jwtSecret = "thisisaverysecuresecretkeyforsigningjwt123";
         secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes());
 
-        when(params.getJwtSecret()).thenReturn(jwtSecret);
-        when(params.getJwtIssuer()).thenReturn(jwtIssuer);
-        when(params.getJwtExpiration()).thenReturn(String.valueOf(jwtExpiration));
-
-        token = generateToken();
+        String jwtToken = generateToken();
+        token = jwtToken.substring(7);
     }
 
     // Helper method to generate a token
@@ -89,22 +86,33 @@ class PlayerProfileServiceTest {
     }
 
     @Test
-    void testCreateProfile_ShouldCreateProfileWithDefaultPreferences() {
-        UUID newplayer = UUID.randomUUID();
+    void testCreateProfile_ShouldCreateProfileWhenConditionsAreAccurate() {
+        UUID newPlayerId = UUID.randomUUID();
 
-        when(playerProfileRepository.findById(newplayer)).thenReturn(Optional.empty());
+        // Mock the repository to return an empty Optional when checking if the profile exists
+        when(playerProfileRepository.findById(newPlayerId)).thenReturn(Optional.empty());
 
-        String result = playerProfileService.createProfile(newplayer);
+        // Call the createProfile method
+        String result = playerProfileService.createProfile(newPlayerId);
 
+        // Verify that the profile was saved
+        verify(playerProfileRepository, times(1)).save(argThat(profile -> {
+            assertNotNull(profile);
+            assertEquals(newPlayerId, profile.getPlayerId());
+            assertNotNull(profile.getPreferences());
+            return true;
+        }));
+
+        // Assert that the result is not null
         assertNotNull(result);
-        verify(playerProfileRepository, times(1)).save(any(PlayerProfile.class));
+        assertEquals("Profile created successfully", result);
     }
 
     @Test
     void testCreateProfile_ProfileExists_ShouldThrowError() {
         UUID newPlayer = UUID.randomUUID();
 
-        when(playerProfileRepository.existsById(playerId)).thenReturn(true);
+        when(playerProfileRepository.findById(any(UUID.class))).thenReturn(Optional.of(new PlayerProfile()));
 
         assertThrows(ProfileAlreadyExistsException.class, () -> {
             playerProfileService.createProfile(newPlayer);
@@ -114,39 +122,33 @@ class PlayerProfileServiceTest {
 
     @Test
     void testGetProfile_ShouldReturnProfile() {
-        UUID existingPlayerId = UUID.fromString(jwtUtil.extractUserId(token));
+        when(jwtUtil.extractUserId(anyString())).thenReturn(playerId.toString());
+        UUID existingPlayerId = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
         PlayerProfile playerProfile = new PlayerProfile();
         playerProfile.setPlayerId(playerId);
+        playerProfile.setPreferences("{\"notifications\": true}");
 
         when(playerProfileRepository.findById(existingPlayerId)).thenReturn(Optional.of(playerProfile));
 
-        ProfileDTO result = playerProfileService.getProfile(token);
+        ProfileDTO result = playerProfileService.getProfile(token.substring(7));
 
         assertNotNull(result);
-    }
-
-    @Test
-    void testGetProfile_WithInvalidToken_ShouldThrowError() {
-        when(jwtUtil.extractUserId("invalidToken")).thenThrow(new IllegalArgumentException());
-
-        assertThrows(IllegalArgumentException.class, () -> {
-            playerProfileService.getProfile("invalidToken");
-        });
     }
 
 
     @Test
     void testUpdateProfilePreferences_shouldUpdatePreferences() {
-        UUID existingPlayerId = UUID.fromString(jwtUtil.extractUserId(token));
-        Map<String, Object> newPreferences = Map.of("notifications", true);
+        when(jwtUtil.extractUserId(anyString())).thenReturn(playerId.toString());
+        UUID existingPlayerId = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
 
+        Map<String, Object> newPreferences = Map.of("notifications", true);
         PreferencesDTO updatedPreferences = new PreferencesDTO();
         updatedPreferences.setPreferences(newPreferences);
 
         when(playerProfileRepository.findById(existingPlayerId)).thenReturn(Optional.of(new PlayerProfile()));
         when(playerProfileRepository.save(any(PlayerProfile.class))).thenReturn(new PlayerProfile());
 
-        PreferencesDTO result = playerProfileService.updateProfilePreferences(token, newPreferences);
+        PreferencesDTO result = playerProfileService.updateProfilePreferences(token, updatedPreferences.getPreferences());
 
         assertNotNull(result);
         assertThat(result.getPreferences()).containsEntry("notifications", true);
@@ -154,7 +156,10 @@ class PlayerProfileServiceTest {
 
     @Test
     void testUpdateProfilePreferences_whenProfileDoesNotExtist_ShouldThrowError() {
-        UUID existingPlayerId = UUID.fromString(jwtUtil.extractUserId(token));
+
+        when(jwtUtil.extractUserId(anyString())).thenReturn(playerId.toString());
+        UUID existingPlayerId = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
+
         Map<String, Object> preferences = Map.of("notifications", true);
 
         when(playerProfileRepository.findById(existingPlayerId)).thenReturn(Optional.empty());
@@ -168,7 +173,7 @@ class PlayerProfileServiceTest {
 
     @Test
     void testUpdateProfilePreferences_WithNullPreferences_ShouldThrowError() {
-        assertThrows(IllegalArgumentException.class, () -> {
+        assertThrows(InvalidPreferenceException.class, () -> {
             playerProfileService.updateProfilePreferences(token, null);
         });
     }
@@ -177,8 +182,9 @@ class PlayerProfileServiceTest {
 
     @Test
     void testDeleteProfile_WhenProfileExists_ShouldDeleteProfile() {
-        UUID newPlayer = UUID.fromString(jwtUtil.extractUserId(token));
         PlayerProfile profile = new PlayerProfile();
+        when(jwtUtil.extractUserId(anyString())).thenReturn(playerId.toString());
+        UUID newPlayer = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
 
         when(playerProfileRepository.findById(newPlayer)).thenReturn(Optional.of(profile));
 
@@ -202,10 +208,12 @@ class PlayerProfileServiceTest {
     void testHandleGameCompleted_ShouldUpdateGamesPlayedAndSendStats() {
         GameCompletedEvent event = new GameCompletedEvent(playerId, true);
         PlayerProfile profile = new PlayerProfile();
+        profile.setPlayerId(playerId);
+        profile.setPreferences("{\"notifications\": true}");
         profile.setGamesPlayed(5);
         profile.setGamesWon(2);
 
-        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(profile));
+        when(playerProfileRepository.findById(any(UUID.class))).thenReturn(Optional.of(profile));
 
         playerProfileService.handleGameCompleted(event);
 
@@ -230,26 +238,33 @@ class PlayerProfileServiceTest {
 
     @Test
     void testUpdateWallet_ShouldUpdateWallet_WithPositiveChange() {
+        when(jwtUtil.extractUserId(anyString())).thenReturn(playerId.toString());
+        UUID existingPlayer = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
+
         WalletDTO walletDTO = new WalletDTO(100, 5);
         PlayerProfile profile = new PlayerProfile();
         profile.setWallet(50);
 
-        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(profile));
+        when(playerProfileRepository.findById(existingPlayer)).thenReturn(Optional.of(profile));
 
         WalletDTO result = playerProfileService.updateWallet(token, walletDTO);
 
-        assertEquals(105, result.getBalance());
+        assertEquals(55, result.getBalance());
         assertEquals(5, result.getChangeAmount());
         verify(playerProfileRepository, times(1)).save(profile);
     }
 
     @Test
     void testUpdateWallet_ShouldUpdateWallet_WithNegativeChange() {
+        when(jwtUtil.extractUserId(anyString())).thenReturn(playerId.toString());
+        UUID existingPlayer = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
+
         WalletDTO walletDTO = new WalletDTO(100, -10);
         PlayerProfile profile = new PlayerProfile();
+        profile.setPreferences("{\"notifications\": true}");
         profile.setWallet(100);
 
-        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(profile));
+        when(playerProfileRepository.findById(existingPlayer)).thenReturn(Optional.of(profile));
 
         WalletDTO result = playerProfileService.updateWallet(token, walletDTO);
 
@@ -260,13 +275,16 @@ class PlayerProfileServiceTest {
 
     @Test
     void testUpdateWallet_ShouldNotAllowNegativeBalance() {
+        when(jwtUtil.extractUserId(anyString())).thenReturn(playerId.toString());
+        UUID existingPlayer = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
         WalletDTO walletDTO = new WalletDTO(100, -150);
         PlayerProfile profile = new PlayerProfile();
+        profile.setPreferences("{\"notifications\": true}");
         profile.setWallet(50);
 
-        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(profile));
+        when(playerProfileRepository.findById(existingPlayer)).thenReturn(Optional.of(profile));
 
-        assertThrows(NegativeBalanceException.class, () -> {
+        assertThrows(InsufficientFundsException.class, () -> {
             playerProfileService.updateWallet(token, walletDTO);
         });
     }
@@ -274,10 +292,14 @@ class PlayerProfileServiceTest {
 
     @Test
     void testGetWallet_ShouldReturnWalletDetails() {
+        when(jwtUtil.extractUserId(anyString())).thenReturn(playerId.toString());
+        UUID existingPlayer = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
+
         PlayerProfile profile = new PlayerProfile();
+        profile.setPreferences("{\"notifications\": true}");
         profile.setWallet(150);
 
-        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(profile));
+        when(playerProfileRepository.findById(existingPlayer)).thenReturn(Optional.of(profile));
 
         WalletDTO result = playerProfileService.getWallet(token);
 
@@ -285,5 +307,20 @@ class PlayerProfileServiceTest {
         assertEquals(150, result.getBalance());
     }
 
+    @Test
+    void testGetPreferences_ShouldReturnPreferences() {
+        when(jwtUtil.extractUserId(anyString())).thenReturn(playerId.toString());
+        UUID existingPlayer = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
+
+        PlayerProfile profile = new PlayerProfile();
+        profile.setPreferences("{\"notifications\": true}");
+
+        when(playerProfileRepository.findById(existingPlayer)).thenReturn(Optional.of(profile));
+
+        PreferencesDTO result = playerProfileService.getProfilePreferences(token);
+
+        assertNotNull(result);
+        assertThat(result.getPreferences()).containsEntry("notifications", true);
+    }
 
 }

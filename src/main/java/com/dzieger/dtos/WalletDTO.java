@@ -1,9 +1,11 @@
 package com.dzieger.dtos;
 
+
 public class WalletDTO {
 
     private int balance;
-    private int changeAmount;
+
+    private int changeAmount = 0;
 
     public WalletDTO() {
     }
