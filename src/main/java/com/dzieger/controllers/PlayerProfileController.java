@@ -19,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/player")
 @Validated
+@CrossOrigin
 public class PlayerProfileController {
 
     private static final Logger log = LoggerFactory.getLogger(PlayerProfileController.class);
