@@ -77,7 +77,7 @@ public class JwtUtilTest {
     }
 
     // Helper method to generate a token
-    private String generateToken() {
+    public String generateToken() {
         return Jwts.builder()
                 .setId(UUID.randomUUID().toString())
                 .claim("username", "testUsername")

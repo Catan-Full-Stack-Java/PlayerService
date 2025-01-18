@@ -6,12 +6,16 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+// Added wallet with virtual coins and virtual currency
+// Store service
+
 @Component
 @Entity
 @Table(name = "player_profiles")
 public class PlayerProfile {
 
     @Id
+    @Column(name = "player_id", nullable = false, unique = true)
     private UUID playerId;
 
     // Player's preferences in JSON format
@@ -24,10 +28,13 @@ public class PlayerProfile {
     private int gamesWon = 0;
 
     @Column(name = "leaderboard_position")
-    private int leaderboardPosition;
+    private int leaderboardPosition = 0;
 
     @Column(name = "time_played", nullable = false)
     private long timePlayed = 0;
+
+    @Column(name = "wallet", nullable = false)
+    private int wallet = 150;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -49,13 +56,14 @@ public class PlayerProfile {
     public PlayerProfile() {
     }
 
-    public PlayerProfile(UUID playerId, String preferences, int gamesPlayed, int gamesWon, int leaderboardPosition, long timePlayed, LocalDateTime createdAt, LocalDateTime updatedAt) {
+    public PlayerProfile(UUID playerId, String preferences, int gamesPlayed, int gamesWon, int leaderboardPosition, long timePlayed, int wallet, LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.playerId = playerId;
         this.preferences = preferences;
         this.gamesPlayed = gamesPlayed;
         this.gamesWon = gamesWon;
         this.leaderboardPosition = leaderboardPosition;
         this.timePlayed = timePlayed;
+        this.wallet = wallet;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
     }
@@ -122,5 +130,13 @@ public class PlayerProfile {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public int getWallet() {
+        return wallet;
+    }
+
+    public void setWallet(int wallet) {
+        this.wallet = wallet;
     }
 }

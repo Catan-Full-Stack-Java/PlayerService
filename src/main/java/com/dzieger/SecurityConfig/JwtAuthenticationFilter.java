@@ -43,15 +43,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             Claims claims = jwtUtil.extractAllClaims(token);
 
+            log.info("Claims extracted: {}", claims);
             String userId = claims.getSubject();
             List<String> roles = claims.get("authorities", List.class);
 
             Role role = Role.valueOf(roles.get(0));
 
+            log.info("User ID: {}", userId);
             CustomAuthenticationToken authentication = new CustomAuthenticationToken(userId, role);
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
+            log.info("User authenticated: {}", authentication.getName());
         } catch (Exception e) {
             log.error("Error while processing authentication", e);
             SecurityContextHolder.clearContext();
