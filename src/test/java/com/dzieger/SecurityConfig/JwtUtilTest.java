@@ -12,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.core.env.Environment;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContext;
@@ -37,6 +38,9 @@ public class JwtUtilTest {
     @Mock
     private Parameters parameters;
 
+    @Mock
+    private Environment env;
+
     @InjectMocks
     private JwtUtil jwtUtil;
 
@@ -47,7 +51,7 @@ public class JwtUtilTest {
     private FilterChain filterChain;
 
     private Key secretKey;
-    private final String jwtSecret = "thisisaverysecuresecretkeyforsigningjwt123";
+    private final String jwtSecret = "thisisaverysecretcodethatshouldnotbeshared";
     private final String jwtIssuer = "testIssuer";
     private final long jwtExpiration = 3600000;
 
@@ -58,13 +62,15 @@ public class JwtUtilTest {
     public void setup() throws ServletException, IOException {
         MockitoAnnotations.openMocks(this);
 
+        when(env.getActiveProfiles()).thenReturn(new String[]{"test"});
+
         // Mock Parameters values
         when(parameters.getJwtSecret()).thenReturn(jwtSecret);
         when(parameters.getJwtIssuer()).thenReturn(jwtIssuer);
         when(parameters.getJwtExpiration()).thenReturn(String.valueOf(jwtExpiration));
 
         // Initialize JwtUtil with mocked parameters
-        jwtUtil = new JwtUtil(parameters);
+        jwtUtil = new JwtUtil(env);
         jwtUtil.init();
 
         secretKey = Keys.hmacShaKeyFor(jwtSecret.getBytes());

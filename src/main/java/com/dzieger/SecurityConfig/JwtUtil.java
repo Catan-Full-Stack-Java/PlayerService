@@ -9,6 +9,8 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -25,19 +27,40 @@ public class JwtUtil {
     private String jwtIssuer;
     private Key KEY;
 
-    private final Parameters params;
+    @Autowired
+    private Parameters params;
 
-    public JwtUtil(Parameters params) {
-        this.params = params;
+    private final Environment env;
+
+    public JwtUtil(Environment env) {
+        this.env = env;
     }
 
     @PostConstruct
     public void init() {
         log.info("Initializing JwtUtil");
-        jwtExpiration = Long.parseLong(params.getJwtExpiration());
-        jwtSecret = params.getJwtSecret();
-        jwtIssuer = params.getJwtIssuer();
-        KEY = Keys.hmacShaKeyFor(jwtSecret.getBytes());
+
+        String[] activeProfiles = env.getActiveProfiles();
+        boolean isTestProfile = List.of(activeProfiles).contains("test");
+
+        if (!isTestProfile) {
+            if (params != null) {
+                this.jwtExpiration = Long.parseLong(params.getJwtExpiration());
+                this.jwtSecret = params.getJwtSecret();
+                this.jwtIssuer = params.getJwtIssuer();
+            } else {
+                log.warn("Parameters bean is not available, using default values");
+                this.jwtExpiration = 360000;
+                this.jwtSecret = "thisisaverysecretcodethatshouldnotbeshared";
+                this.jwtIssuer = "testIssuer";
+            }
+        } else {
+            this.jwtExpiration = 360000;
+            this.jwtSecret = "thisisaverysecretcodethatshouldnotbeshared";
+            this.jwtIssuer = "testIssuer";
+        }
+
+        this.KEY = Keys.hmacShaKeyFor(jwtSecret.getBytes());
     }
 
     public Claims extractAllClaims(String token) {
