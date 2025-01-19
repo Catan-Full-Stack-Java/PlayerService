@@ -39,11 +39,15 @@ public class PlayerProfileService {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public String createProfile(UUID id){
-        log.info("Creating profile for player with id: {}", id);
+    public String createProfile(String token){
+        log.info("Creating profile for player with id: {}", jwtUtil.extractUserId(token.substring(7)));
+
+        UUID id = UUID.fromString(jwtUtil.extractUserId(token.substring(7)));
+
         if(playerProfileRepository.findById(id).isPresent()) {
             throw new ProfileAlreadyExistsException("Profile already exists");
         }
+
         PlayerProfile newProfile = new PlayerProfile();
         newProfile.setPlayerId(id);
         newProfile.setPreferences(setDefaultPreferences());

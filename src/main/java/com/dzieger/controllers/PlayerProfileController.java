@@ -31,9 +31,9 @@ public class PlayerProfileController {
     }
 
     @PostMapping("/v1/profile")
-    public ResponseEntity<ApiResponse<String>> createProfile(@Valid @RequestBody ProfileIdDTO playerId) {
-        log.info("Creating profile for player: {}", playerId.getPlayerId());
-        String result = playerProfileService.createProfile(playerId.getPlayerId());
+    public ResponseEntity<ApiResponse<String>> createProfile(@RequestHeader("Authorization") String token) {
+        log.info("Creating profile for player");
+        String result = playerProfileService.createProfile(token);
         log.info("Profile created successfully");
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new ApiResponse<>(true, "Profile created successfully", result));

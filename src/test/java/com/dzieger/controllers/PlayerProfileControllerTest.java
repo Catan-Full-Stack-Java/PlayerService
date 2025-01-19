@@ -1,5 +1,6 @@
 package com.dzieger.controllers;
 
+import com.dzieger.SecurityConfig.JwtUtil;
 import com.dzieger.dtos.*;
 import com.dzieger.exceptions.GlobalExceptionHandler;
 import com.dzieger.exceptions.ProfileAlreadyExistsException;
@@ -19,6 +20,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.Map;
 import java.util.UUID;
 
+
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -30,6 +32,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PlayerProfileControllerTest {
 
     private MockMvc mockMvc;
+
+    @Mock
+    private JwtUtil jwtUtil;
 
     @Mock
     private PlayerProfileService playerProfileService;
@@ -56,12 +61,11 @@ class PlayerProfileControllerTest {
 
     @Test
     void testCreateProfile_ShouldReturnCreatedStatus() throws Exception {
-        UUID playerId = UUID.randomUUID();
-        when(playerProfileService.createProfile(playerId)).thenReturn("Profile created successfully");
+        String token = "valid-token";
+        when(playerProfileService.createProfile(token)).thenReturn("Profile created successfully");
 
         mockMvc.perform(post("/api/v1/player/v1/profile")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"playerId\": \"" + playerId + "\"}"))
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isCreated())
                 .andExpectAll(
                     jsonPath("$.success").value(true),
@@ -71,25 +75,15 @@ class PlayerProfileControllerTest {
     }
 
     @Test
-    void testCreateProfile_ShouldReturnBadRequest_whenPlayerIdIsNull() throws Exception {
-        mockMvc.perform(post("/api/v1/player/v1/profile")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.message").value("Validation failed"))
-                .andExpect(jsonPath("$.data.playerId").value("Player ID cannot be null"))
-                .andDo(print());
-    }
-
-    @Test
     void testCreateProfile_shouldReturnConflict_whenProfileAlreadyExists() throws Exception {
-        UUID playerId = UUID.randomUUID();
-        when(playerProfileService.createProfile(playerId)).thenThrow(new ProfileAlreadyExistsException("Profile already exists"));
+        // Arrange
+        String token = "valid-token";
+        when(playerProfileService.createProfile(anyString()))
+                .thenThrow(new ProfileAlreadyExistsException("Profile already exists"));
 
+        // Act & Assert
         mockMvc.perform(post("/api/v1/player/v1/profile")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"playerId\": \"" + playerId + "\"}"))
+                        .header("Authorization", "Bearer " + token))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.success").value(false))
                 .andExpect(jsonPath("$.message").value("Profile already exists"))

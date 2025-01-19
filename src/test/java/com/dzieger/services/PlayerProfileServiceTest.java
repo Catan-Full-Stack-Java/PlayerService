@@ -87,38 +87,64 @@ class PlayerProfileServiceTest {
 
     @Test
     void testCreateProfile_ShouldCreateProfileWhenConditionsAreAccurate() {
-        UUID newPlayerId = UUID.randomUUID();
+        // Arrange
+        String token = "Bearer valid.jwt.token";
+        UUID playerId = UUID.randomUUID();
 
-        // Mock the repository to return an empty Optional when checking if the profile exists
-        when(playerProfileRepository.findById(newPlayerId)).thenReturn(Optional.empty());
+        // Mock JWT utility to extract the user ID
+        lenient().when(jwtUtil.extractUserId(token.substring(7))).thenReturn(playerId.toString());
 
-        // Call the createProfile method
-        String result = playerProfileService.createProfile(newPlayerId);
+        // Mock repository to simulate that the profile does not exist
+        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.empty());
 
-        // Verify that the profile was saved
+        // Act
+        String result = playerProfileService.createProfile(token);
+
+        // Assert
+        // Verify the profile was saved with the expected values
         verify(playerProfileRepository, times(1)).save(argThat(profile -> {
             assertNotNull(profile);
-            assertEquals(newPlayerId, profile.getPlayerId());
+            assertEquals(playerId, profile.getPlayerId());
             assertNotNull(profile.getPreferences());
+            assertEquals(0, profile.getGamesPlayed());
+            assertEquals(0, profile.getGamesWon());
+            assertEquals(0, profile.getLeaderboardPosition());
+            assertEquals(0, profile.getTimePlayed());
+            assertEquals(150, profile.getWallet());
             return true;
         }));
 
-        // Assert that the result is not null
+        // Verify the correct result message
         assertNotNull(result);
         assertEquals("Profile created successfully", result);
     }
 
+
     @Test
     void testCreateProfile_ProfileExists_ShouldThrowError() {
-        UUID newPlayer = UUID.randomUUID();
+        // Arrange
+        String token = "Bearer valid.jwt.token";
+        UUID playerId = UUID.randomUUID();
 
-        when(playerProfileRepository.findById(any(UUID.class))).thenReturn(Optional.of(new PlayerProfile()));
+        // Mock JWT utility to extract the user ID
+        lenient().when(jwtUtil.extractUserId(token.substring(7))).thenReturn(playerId.toString());
 
-        assertThrows(ProfileAlreadyExistsException.class, () -> {
-            playerProfileService.createProfile(newPlayer);
-        });
+        // Mock repository to simulate that the profile exists
+        when(playerProfileRepository.findById(playerId)).thenReturn(Optional.of(new PlayerProfile()));
+
+        // Act & Assert
+        ProfileAlreadyExistsException exception = assertThrows(
+                ProfileAlreadyExistsException.class,
+                () -> playerProfileService.createProfile(token)
+        );
+
+        // Verify the exception message
+        assertEquals("Profile already exists", exception.getMessage());
+
+        // Verify that save is not called
         verify(playerProfileRepository, times(0)).save(any(PlayerProfile.class));
     }
+
 
     @Test
     void testGetProfile_ShouldReturnProfile() {

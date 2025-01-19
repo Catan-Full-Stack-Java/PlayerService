@@ -2,7 +2,7 @@
   <configuration default="false" name="PlayerServiceApplication" type="Application" factoryName="Application" nameIsGenerated="true">
     <option name="MAIN_CLASS_NAME" value="com.dzieger.PlayerServiceApplication" />
     <module name="PlayerService" />
-    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=dev" />
+    <option name="VM_PARAMETERS" value="-Dspring.profiles.active=test" />
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="com.dzieger.*" />
